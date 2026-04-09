@@ -1,3 +1,4 @@
+# Enrich corpus subfolders with semantic INDEX.md files derived from the knowledge graph
 from __future__ import annotations
 from pathlib import Path
 import datetime
@@ -5,7 +6,12 @@ import networkx as nx
 
 
 def _group_nodes_by_folder(G: nx.Graph, corpus_path: Path) -> dict[Path, list[str]]:
-    """Group node IDs by their immediate parent folder, excluding graphify-out/."""
+    """Group node IDs by their immediate parent folder, excluding graphify-out/.
+
+    Folder keys are always relative to corpus_path. Absolute source_file paths
+    that fall under corpus_path are made relative; others are used as-is.
+    """
+    corpus_path = Path(corpus_path).resolve()
     groups: dict[Path, list[str]] = {}
     for node_id, data in G.nodes(data=True):
         src = data.get("source_file", "")
@@ -14,6 +20,12 @@ def _group_nodes_by_folder(G: nx.Graph, corpus_path: Path) -> dict[Path, list[st
         p = Path(src)
         if not p.parts:
             continue
+        # Normalise absolute paths to corpus-relative
+        if p.is_absolute():
+            try:
+                p = p.relative_to(corpus_path)
+            except ValueError:
+                pass  # outside corpus — use as-is
         folder = p.parent
         if not folder.parts:
             continue
@@ -28,13 +40,21 @@ def _cross_folder_edges(
     node_ids: list[str],
     G: nx.Graph,
 ) -> list[dict]:
-    """Return edges from nodes in `folder` that cross into other folders."""
+    """Return edges from nodes in `folder` that cross into other folders.
+
+    Each unique (source, target) pair is emitted at most once.
+    """
     node_set = set(node_ids)
+    seen: set[frozenset] = set()
     results = []
     for nid in node_ids:
         for neighbor in G.neighbors(nid):
             if neighbor in node_set:
                 continue
+            pair = frozenset((nid, neighbor))
+            if pair in seen:
+                continue
+            seen.add(pair)
             n_src = G.nodes[neighbor].get("source_file", "")
             if not n_src:
                 continue
@@ -57,7 +77,12 @@ def _write_subfolder_index(
     data: dict,
     dry_run: bool = False,
 ) -> str | None:
-    """Write enriched INDEX.md for a subfolder. Returns content string (dry_run) or None."""
+    """Write enriched INDEX.md for a subfolder.
+
+    Returns the content string when dry_run=True (no file written).
+    Returns None after writing the file when dry_run=False.
+    """
+    folder_path = Path(data["folder"])
     now = datetime.date.today().isoformat()
     nodes = data["nodes"]
     cross_edges = data.get("cross_edges", [])
@@ -65,7 +90,8 @@ def _write_subfolder_index(
 
     docs = sorted({Path(n["source_file"]).name for n in nodes if n.get("source_file")})
     entities = [n["label"] for n in nodes if n.get("label")]
-    entity_list = ", ".join(entities[:10])
+    # Quote each entity so the YAML list is valid when parsed programmatically
+    entity_list = ", ".join(f'"{e}"' for e in entities[:10])
 
     connected: dict[str, str] = {}
     for e in cross_edges:
@@ -75,12 +101,12 @@ def _write_subfolder_index(
 
     lines = [
         "---",
-        f'folder: "{data["folder"]}"',
+        f'folder: "{folder_path}"',
         f'entities: [{entity_list}]',
         f'last_enriched: "{now}"',
         "---",
         "",
-        f"# {data['folder'].name.replace('-', ' ').replace('_', ' ').title()}",
+        f"# {folder_path.name.replace('-', ' ').replace('_', ' ').title()}",
         "",
     ]
 
@@ -107,7 +133,7 @@ def _write_subfolder_index(
     content = "\n".join(lines)
 
     if dry_run:
-        return None
+        return content
 
     index_path = folder / "INDEX.md"
     index_path.write_text(content, encoding="utf-8")

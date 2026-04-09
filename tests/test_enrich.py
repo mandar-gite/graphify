@@ -86,7 +86,8 @@ def _make_folder_data():
 def test_write_subfolder_index_dry_run(tmp_path):
     data = _make_folder_data()
     written = _write_subfolder_index(tmp_path / "clients/bridgestone", data, dry_run=True)
-    assert written is None
+    assert isinstance(written, str)
+    assert "Contract Renewal" in written
     assert not (tmp_path / "clients/bridgestone/INDEX.md").exists()
 
 
