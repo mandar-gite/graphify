@@ -7,7 +7,7 @@
 
 **An AI coding assistant skill.** Type `/graphify` in Claude Code, Codex, OpenCode, or OpenClaw - it reads your files, builds a knowledge graph, and gives you back structure you didn't know was there. Understand a codebase faster. Find the "why" behind architectural decisions.
 
-Fully multimodal. Drop in code, PDFs, markdown, screenshots, diagrams, whiteboard photos, even images in other languages - graphify uses Claude vision to extract concepts and relationships from all of it and connects them into one graph.
+Fully multimodal. Drop in code, PDFs, markdown, Word documents, spreadsheets, presentations, screenshots, diagrams, whiteboard photos, even images in other languages - graphify uses Claude vision to extract concepts and relationships from all of it and connects them into one graph.
 
 > Andrej Karpathy keeps a `/raw` folder where he drops papers, tweets, screenshots, and notes. graphify is the answer to that problem - 71.5x fewer tokens per query vs reading the raw files, persistent across sessions, honest about what it found vs guessed.
 
@@ -142,6 +142,15 @@ graphify claude uninstall
 graphify codex install             # AGENTS.md (Codex)
 graphify opencode install          # AGENTS.md (OpenCode)
 graphify claw install              # AGENTS.md (OpenClaw)
+
+# enrich INDEX.md files from the graph (Claude Code only)
+graphify enrich <path>             # write enriched INDEX.md per subfolder + master index
+graphify enrich <path> --index-dir <dir>   # write to separate dir (keeps corpus clean)
+graphify enrich <path> --watch     # auto-re-enrich when graph.json changes
+graphify enrich <path> --dry-run   # preview without writing
+graphify enrich <path> --master-only       # root INDEX.md only
+
+graphify enrich-skill install      # install /graphify-enrich Claude Code skill
 ```
 
 Works with any mix of file types:
@@ -151,7 +160,24 @@ Works with any mix of file types:
 | Code | `.py .ts .js .go .rs .java .c .cpp .rb .cs .kt .scala .php .swift .lua` | AST via tree-sitter + call-graph + docstring/comment rationale |
 | Docs | `.md .txt .rst` | Concepts + relationships + design rationale via Claude |
 | Papers | `.pdf` | Citation mining + concept extraction |
+| Office | `.docx .xlsx .pptx` | pandoc (Word/PowerPoint) + openpyxl (spreadsheet headers) |
 | Images | `.png .jpg .webp .gif` | Claude vision - screenshots, diagrams, any language |
+
+## Enriching INDEX.md files
+
+After building a graph, `graphify enrich` patches semantic `INDEX.md` files into your corpus — one per subfolder plus a master index at the root. Each file contains a document list, key entities, and cross-folder references derived directly from the graph.
+
+For Claude Code users, `/graphify-enrich` goes further: Claude Code itself generates 2-3 sentence plain-English summaries for each folder using its own frontier model — no `ANTHROPIC_API_KEY` needed.
+
+```bash
+# Install the enrich skill (one-time)
+graphify enrich-skill install
+
+# In a Claude Code session
+/graphify-enrich ./corpus --index-dir ./indexes
+```
+
+If you manage existing `INDEX.md` stubs (e.g. from a Bootstrap process), `_patch_index` preserves manually maintained fields (Type, Owner, Status, Key Files) while updating only the semantic sections.
 
 ## What you get
 
