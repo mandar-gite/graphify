@@ -220,3 +220,43 @@ def test_enrich_master_only(tmp_path):
     enrich(tmp_path, graph_json_path=graph_json, watch=False, dry_run=False, master_only=True)
     assert (tmp_path / "INDEX.md").exists()
     assert not (tmp_path / "clients" / "INDEX.md").exists()
+
+
+# ---------------------------------------------------------------------------
+# Task 6: _watch_and_enrich
+# ---------------------------------------------------------------------------
+import time
+import threading
+from graphify.enrich import _watch_and_enrich
+
+
+def test_watch_and_enrich_triggers_on_change(tmp_path):
+    (tmp_path / "clients").mkdir()
+    graph_json = _make_graph_json(tmp_path)
+
+    triggered = []
+
+    def fake_enrich(corpus_path, graph_json_path, master_only):
+        triggered.append(1)
+
+    stop = threading.Event()
+
+    def run():
+        _watch_and_enrich(
+            tmp_path,
+            graph_json,
+            master_only=False,
+            _enrich_fn=fake_enrich,
+            _stop_event=stop,
+            _poll_interval=0.1,
+        )
+
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+    time.sleep(0.2)
+    graph_json.touch()  # simulate graph.json update
+    time.sleep(0.3)
+    stop.set()
+    t.join(timeout=2)
+
+    assert len(triggered) >= 1

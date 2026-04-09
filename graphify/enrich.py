@@ -243,3 +243,43 @@ def enrich(
 
     if watch:
         _watch_and_enrich(corpus_path, Path(graph_json_path), master_only=master_only)
+
+
+def _watch_and_enrich(
+    corpus_path: Path,
+    graph_json_path: Path,
+    master_only: bool = False,
+    _enrich_fn=None,
+    _stop_event=None,
+    _poll_interval: float = 5.0,
+) -> None:
+    """Poll graph.json mtime and re-run enrichment on change.
+
+    Runs until KeyboardInterrupt or _stop_event is set (for testing).
+    _enrich_fn and _stop_event are injection points for tests.
+    """
+    import time
+    import threading
+
+    if _enrich_fn is None:
+        _enrich_fn = lambda cp, gp, mo: enrich(cp, gp, watch=False, master_only=mo)
+
+    last_mtime = Path(graph_json_path).stat().st_mtime
+    print(f"[graphify enrich] watching {graph_json_path} (poll every {_poll_interval}s) ...")
+
+    try:
+        while True:
+            if _stop_event is not None and _stop_event.is_set():
+                break
+            time.sleep(_poll_interval)
+            try:
+                mtime = Path(graph_json_path).stat().st_mtime
+            except OSError:
+                continue
+            if mtime != last_mtime:
+                last_mtime = mtime
+                print("[graphify enrich] graph.json updated — re-enriching ...")
+                _enrich_fn(corpus_path, graph_json_path, master_only)
+                print("[graphify enrich] done.")
+    except KeyboardInterrupt:
+        print("[graphify enrich] stopped.")
