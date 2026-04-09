@@ -271,6 +271,23 @@ def claude_uninstall(project_dir: Path | None = None) -> None:
     _uninstall_claude_hook(project_dir or Path("."))
 
 
+def enrich_skill_install() -> None:
+    """Copy skill-enrich.md to ~/.claude/skills/graphify-enrich/SKILL.md."""
+    skill_src = Path(__file__).parent / "skill-enrich.md"
+    if not skill_src.exists():
+        print("error: skill-enrich.md not found in package - reinstall graphify", file=sys.stderr)
+        sys.exit(1)
+    skill_dst = Path.home() / ".claude" / "skills" / "graphify-enrich" / "SKILL.md"
+    skill_dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(skill_src, skill_dst)
+    print(f"  skill installed  →  {skill_dst}")
+    print()
+    print("Done. In Claude Code type:")
+    print()
+    print("  /graphify-enrich <corpus_path> --index-dir <index_dir>")
+    print()
+
+
 def main() -> None:
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
         print("Usage: graphify <command>")
@@ -290,6 +307,7 @@ def main() -> None:
         print("  claw install            write graphify section to AGENTS.md (OpenClaw)")
         print("  claw uninstall          remove graphify section from AGENTS.md")
         print("  enrich <path> [--index-dir <dir>] [--watch] [--dry-run] [--master-only]  enrich INDEX.md files from graph.json")
+        print("  enrich-skill install        install /graphify-enrich skill for Claude Code")
         print()
         return
 
@@ -352,6 +370,13 @@ def main() -> None:
                 pass
         result = run_benchmark(graph_path, corpus_words=corpus_words)
         print_benchmark(result)
+    elif cmd == "enrich-skill":
+        subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
+        if subcmd == "install":
+            enrich_skill_install()
+        else:
+            print("Usage: graphify enrich-skill install", file=sys.stderr)
+            sys.exit(1)
     elif cmd == "enrich":
         from graphify.enrich import enrich as _enrich
 
