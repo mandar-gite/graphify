@@ -191,3 +191,55 @@ def _write_master_index(
     index_path = Path(corpus_path) / "INDEX.md"
     index_path.write_text(content, encoding="utf-8")
     return None
+
+
+def enrich(
+    corpus_path: Path,
+    graph_json_path: Path | None = None,
+    watch: bool = False,
+    dry_run: bool = False,
+    master_only: bool = False,
+) -> None:
+    """Read graph.json and write enriched INDEX.md files into corpus subfolders."""
+    import json
+    from graphify.build import build_from_json
+
+    corpus_path = Path(corpus_path)
+    if graph_json_path is None:
+        graph_json_path = corpus_path / "graphify-out" / "graph.json"
+
+    if not Path(graph_json_path).exists():
+        raise FileNotFoundError(f"graph.json not found at {graph_json_path}. Run graphify first.")
+
+    data = json.loads(Path(graph_json_path).read_text())
+    G = build_from_json(data)
+
+    groups = _group_nodes_by_folder(G, corpus_path)
+
+    folder_summaries: dict[Path, dict] = {}
+
+    for folder, node_ids in groups.items():
+        nodes = [dict(id=nid, **G.nodes[nid]) for nid in node_ids]
+        cross_edges = _cross_folder_edges(folder, node_ids, G)
+        entities = [n.get("label", "") for n in nodes if n.get("label")]
+        summary = ""  # filled by _generate_summary in Task 8
+
+        folder_data = {
+            "folder": folder,
+            "node_ids": node_ids,
+            "nodes": nodes,
+            "cross_edges": cross_edges,
+            "summary": summary,
+        }
+        folder_summaries[folder] = {"summary": summary, "entities": entities}
+
+        if not master_only:
+            abs_folder = corpus_path / folder
+            if not dry_run:
+                abs_folder.mkdir(parents=True, exist_ok=True)
+            _write_subfolder_index(abs_folder, folder_data, dry_run=dry_run)
+
+    _write_master_index(corpus_path, folder_summaries, dry_run=dry_run)
+
+    if watch:
+        _watch_and_enrich(corpus_path, Path(graph_json_path), master_only=master_only)

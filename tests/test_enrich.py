@@ -159,3 +159,64 @@ def test_write_master_index_dry_run(tmp_path):
     result = _write_master_index(tmp_path, {}, dry_run=True)
     assert not (tmp_path / "INDEX.md").exists()
     assert isinstance(result, str)
+
+
+# ---------------------------------------------------------------------------
+# Task 5: enrich() orchestrator
+# ---------------------------------------------------------------------------
+import json
+from graphify.enrich import enrich
+from graphify.export import to_json
+from graphify.build import build_from_json
+from graphify.cluster import cluster
+
+
+def _make_graph_json(tmp_path):
+    extraction = {
+        "nodes": [
+            {"id": "a", "label": "Contract", "source_file": str(tmp_path / "clients/brief.md"), "file_type": "document"},
+            {"id": "b", "label": "Invoice", "source_file": str(tmp_path / "finance/inv.md"), "file_type": "document"},
+        ],
+        "edges": [
+            {"source": "a", "target": "b", "relation": "references", "confidence": "EXTRACTED",
+             "source_file": str(tmp_path / "clients/brief.md"), "weight": 1.0},
+        ],
+    }
+    G = build_from_json(extraction)
+    communities = cluster(G)
+    out = tmp_path / "graphify-out"
+    out.mkdir()
+    to_json(G, communities, str(out / "graph.json"))
+    return out / "graph.json"
+
+
+def test_enrich_creates_subfolder_indexes(tmp_path):
+    (tmp_path / "clients").mkdir()
+    (tmp_path / "finance").mkdir()
+    graph_json = _make_graph_json(tmp_path)
+    enrich(tmp_path, graph_json_path=graph_json, watch=False, dry_run=False)
+    assert (tmp_path / "clients" / "INDEX.md").exists()
+    assert (tmp_path / "finance" / "INDEX.md").exists()
+
+
+def test_enrich_creates_master_index(tmp_path):
+    (tmp_path / "clients").mkdir()
+    graph_json = _make_graph_json(tmp_path)
+    enrich(tmp_path, graph_json_path=graph_json, watch=False, dry_run=False)
+    assert (tmp_path / "INDEX.md").exists()
+
+
+def test_enrich_dry_run_no_writes(tmp_path):
+    (tmp_path / "clients").mkdir()
+    graph_json = _make_graph_json(tmp_path)
+    enrich(tmp_path, graph_json_path=graph_json, watch=False, dry_run=True)
+    assert not (tmp_path / "clients" / "INDEX.md").exists()
+    assert not (tmp_path / "INDEX.md").exists()
+
+
+def test_enrich_master_only(tmp_path):
+    (tmp_path / "clients").mkdir()
+    graph_json = _make_graph_json(tmp_path)
+    enrich(tmp_path, graph_json_path=graph_json, watch=False, dry_run=False, master_only=True)
+    assert (tmp_path / "INDEX.md").exists()
+    assert not (tmp_path / "clients" / "INDEX.md").exists()
