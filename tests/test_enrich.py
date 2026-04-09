@@ -275,3 +275,24 @@ def test_cli_enrich_help():
         capture_output=True, text=True
     )
     assert "enrich" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Task 8: _generate_summary
+# ---------------------------------------------------------------------------
+from graphify.enrich import _generate_summary
+
+
+def test_generate_summary_returns_string():
+    entities = ["Contract Renewal", "Tanaka-san", "Q2 Review"]
+    folder = Path("clients/bridgestone")
+    summary = _generate_summary(folder, entities, _mock=True)
+    assert isinstance(summary, str)
+    assert len(summary) > 0
+
+
+def test_generate_summary_mock_contains_folder_name():
+    entities = ["DocA"]
+    folder = Path("clients/bridgestone")
+    summary = _generate_summary(folder, entities, _mock=True)
+    assert "bridgestone" in summary.lower()

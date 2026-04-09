@@ -196,6 +196,42 @@ def _write_master_index(
     return None
 
 
+def _generate_summary(
+    folder: Path,
+    entities: list[str],
+    _mock: bool = False,
+) -> str:
+    """Generate a 2-3 sentence summary for a folder using Claude.
+
+    Falls back to a plain entity list if no API key is available.
+    Pass _mock=True in tests to skip API calls.
+    """
+    if _mock:
+        name = Path(folder).name.replace("-", " ").replace("_", " ")
+        return f"{name.title()} folder containing: {', '.join(entities[:5])}."
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic()
+        entity_str = ", ".join(entities[:20])
+        prompt = (
+            f"Folder: {folder}\n"
+            f"Entities found: {entity_str}\n\n"
+            f"Write a 2-3 sentence plain-English summary of what this folder contains "
+            f"and what it is for. Be specific and factual. No bullet points."
+        )
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=150,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return message.content[0].text.strip()
+    except Exception:
+        # No API key or network error — fall back to entity list
+        name = Path(folder).name.replace("-", " ").replace("_", " ")
+        return f"{name.title()} folder containing: {', '.join(entities[:5])}."
+
+
 def enrich(
     corpus_path: Path,
     graph_json_path: Path | None = None,
@@ -225,7 +261,7 @@ def enrich(
         nodes = [dict(id=nid, **G.nodes[nid]) for nid in node_ids]
         cross_edges = _cross_folder_edges(folder, node_ids, G)
         entities = [n.get("label", "") for n in nodes if n.get("label")]
-        summary = ""
+        summary = _generate_summary(folder, entities)
 
         folder_data = {
             "folder": folder,
