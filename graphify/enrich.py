@@ -232,6 +232,105 @@ def _generate_summary(
         return f"{name.title()} folder containing: {', '.join(entities[:5])}."
 
 
+def _patch_index(
+    existing: str,
+    summary: str,
+    entities: list[str],
+    cross_refs: list[dict],
+) -> str:
+    """Patch semantic sections in an existing INDEX.md stub.
+
+    Replaces: Summary body, Key Entities section (creates if missing), Cross-References body.
+    Preserves: Type, Owner, Status, Key Files, Subfolders, Open Items.
+    Adds: last_enriched line after Last Updated.
+    """
+    now = datetime.date.today().isoformat()
+    lines = existing.splitlines()
+    out = []
+    i = 0
+    last_enriched_added = False
+    key_entities_written = False
+
+    while i < len(lines):
+        line = lines[i]
+
+        # Inject last_enriched after Last Updated
+        if line.startswith("Last Updated:") and not last_enriched_added:
+            out.append(line)
+            # Remove existing last_enriched if already there
+            if i + 1 < len(lines) and lines[i + 1].startswith("last_enriched:"):
+                i += 1
+            out.append(f"last_enriched: {now}")
+            last_enriched_added = True
+            i += 1
+            continue
+
+        # Replace Summary section body
+        if line.strip() == "## Summary":
+            out.append(line)
+            out.append("")
+            out.append(summary)
+            out.append("")
+            i += 1
+            # Skip old summary lines until next ##
+            while i < len(lines) and not lines[i].startswith("## "):
+                i += 1
+            continue
+
+        # Replace Cross-References section body
+        if line.strip() == "## Cross-References":
+            out.append(line)
+            i += 1
+            # Skip old cross-ref lines until next ##
+            while i < len(lines) and not lines[i].startswith("## "):
+                i += 1
+            if cross_refs:
+                for ref in cross_refs:
+                    conf = ref.get("confidence", "INFERRED")
+                    score = ref.get("confidence_score", "")
+                    score_str = f" {score:.2f}" if isinstance(score, float) else ""
+                    rel = ref.get("relation", "")
+                    out.append(f"- [[{ref['target']}]] — `{rel}` [{conf}{score_str}]")
+            else:
+                out.append("- <!-- [[RelatedFolder/INDEX]] — reason -->")
+            out.append("")
+            continue
+
+        # Drop existing Key Entities section (will re-inject at the right place)
+        if line.strip() == "## Key Entities":
+            i += 1
+            while i < len(lines) and not lines[i].startswith("## "):
+                i += 1
+            continue
+
+        # Inject Key Entities before Subfolders, Cross-References, or Open Items
+        if (
+            entities
+            and not key_entities_written
+            and line.startswith("## ")
+            and line.strip() in ("## Subfolders", "## Cross-References", "## Open Items")
+        ):
+            out.append("## Key Entities")
+            out.append("")
+            for entity in entities[:20]:
+                out.append(f"- {entity}")
+            out.append("")
+            key_entities_written = True
+
+        out.append(line)
+        i += 1
+
+    # Append Key Entities at end if no suitable injection point was found
+    if entities and not key_entities_written:
+        out.append("")
+        out.append("## Key Entities")
+        out.append("")
+        for entity in entities[:20]:
+            out.append(f"- {entity}")
+
+    return "\n".join(out)
+
+
 def enrich(
     corpus_path: Path,
     graph_json_path: Path | None = None,

@@ -296,3 +296,75 @@ def test_generate_summary_mock_contains_folder_name():
     folder = Path("clients/bridgestone")
     summary = _generate_summary(folder, entities, _mock=True)
     assert "bridgestone" in summary.lower()
+
+
+# ---------------------------------------------------------------------------
+# Task 9: _patch_index
+# ---------------------------------------------------------------------------
+from graphify.enrich import _patch_index
+
+
+STUB = """# BrewNexus Index
+Type: #project #active
+Owner: #ballu
+Status: #active
+Last Updated: 2025-09-02
+
+## Summary
+Delivery engagement — briefs, deliverables, and correspondence. Contains 5 files.
+
+## Key Files
+| File | Description | Date |
+|------|-------------|------|
+| [[BrewNexus/doc|doc]] | PDF | 2025-08-22 |
+
+## Subfolders
+- `sub1/`
+
+## Cross-References
+- <!-- [[RelatedFolder/INDEX]] — reason -->
+
+## Open Items
+- [ ] Add cross-references to related folders
+"""
+
+
+def test_patch_index_preserves_owner_and_type():
+    result = _patch_index(STUB, summary="New summary.", entities=[], cross_refs=[])
+    assert "#ballu" in result
+    assert "#project #active" in result
+
+
+def test_patch_index_replaces_summary():
+    result = _patch_index(STUB, summary="Updated summary.", entities=[], cross_refs=[])
+    assert "Updated summary." in result
+    assert "Delivery engagement" not in result
+
+
+def test_patch_index_adds_key_entities_section():
+    result = _patch_index(STUB, summary="S.", entities=["ML Analytics", "Brewcrafts"], cross_refs=[])
+    assert "## Key Entities" in result
+    assert "ML Analytics" in result
+
+
+def test_patch_index_replaces_cross_references():
+    refs = [{"target": "DataChamps/INDEX", "relation": "shared_client", "confidence": "EXTRACTED"}]
+    result = _patch_index(STUB, summary="S.", entities=[], cross_refs=refs)
+    assert "DataChamps/INDEX" in result
+    assert "<!-- [[RelatedFolder" not in result
+
+
+def test_patch_index_preserves_key_files():
+    result = _patch_index(STUB, summary="S.", entities=[], cross_refs=[])
+    assert "BrewNexus/doc" in result
+
+
+def test_patch_index_preserves_subfolders():
+    result = _patch_index(STUB, summary="S.", entities=[], cross_refs=[])
+    assert "## Subfolders" in result
+    assert "sub1/" in result
+
+
+def test_patch_index_updates_last_enriched():
+    result = _patch_index(STUB, summary="S.", entities=[], cross_refs=[])
+    assert "last_enriched" in result
