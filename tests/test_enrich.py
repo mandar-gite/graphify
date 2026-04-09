@@ -260,3 +260,18 @@ def test_watch_and_enrich_triggers_on_change(tmp_path):
     t.join(timeout=2)
 
     assert len(triggered) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Task 7: CLI wiring
+# ---------------------------------------------------------------------------
+import subprocess
+import sys
+
+
+def test_cli_enrich_help():
+    result = subprocess.run(
+        [sys.executable, "-m", "graphify", "--help"],
+        capture_output=True, text=True
+    )
+    assert "enrich" in result.stdout

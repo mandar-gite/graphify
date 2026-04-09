@@ -289,6 +289,7 @@ def main() -> None:
         print("  opencode uninstall      remove graphify section from AGENTS.md")
         print("  claw install            write graphify section to AGENTS.md (OpenClaw)")
         print("  claw uninstall          remove graphify section from AGENTS.md")
+        print("  enrich <path> [--watch] [--dry-run] [--master-only]  enrich INDEX.md files from graph.json")
         print()
         return
 
@@ -351,6 +352,20 @@ def main() -> None:
                 pass
         result = run_benchmark(graph_path, corpus_words=corpus_words)
         print_benchmark(result)
+    elif cmd == "enrich":
+        from graphify.enrich import enrich as _enrich
+
+        if len(sys.argv) < 3:
+            print("Usage: graphify enrich <path> [--watch] [--dry-run] [--master-only]", file=sys.stderr)
+            sys.exit(1)
+
+        corpus_path = Path(sys.argv[2])
+        args = sys.argv[3:]
+        watch = "--watch" in args
+        dry_run = "--dry-run" in args
+        master_only = "--master-only" in args
+
+        _enrich(corpus_path, watch=watch, dry_run=dry_run, master_only=master_only)
     else:
         print(f"error: unknown command '{cmd}'", file=sys.stderr)
         print("Run 'graphify --help' for usage.", file=sys.stderr)
