@@ -368,3 +368,45 @@ def test_patch_index_preserves_subfolders():
 def test_patch_index_updates_last_enriched():
     result = _patch_index(STUB, summary="S.", entities=[], cross_refs=[])
     assert "last_enriched" in result
+
+
+# ---------------------------------------------------------------------------
+# Task 10: --index-dir flag
+# ---------------------------------------------------------------------------
+def _make_graph_json_at(corpus, tmp_path):
+    extraction = {
+        "nodes": [
+            {"id": "a", "label": "Contract", "source_file": str(corpus / "clients/brief.md"), "file_type": "document"},
+        ],
+        "edges": [],
+    }
+    G = build_from_json(extraction)
+    communities = cluster(G)
+    out = tmp_path / "graphify-out"
+    out.mkdir(exist_ok=True)
+    to_json(G, communities, str(out / "graph.json"))
+    return out / "graph.json"
+
+
+def test_enrich_index_dir_writes_to_separate_dir(tmp_path):
+    corpus = tmp_path / "corpus"
+    index_dir = tmp_path / "indexes"
+    (corpus / "clients").mkdir(parents=True)
+    graph_json = _make_graph_json_at(corpus, tmp_path)
+    enrich(corpus, graph_json_path=graph_json, index_dir=index_dir, watch=False, dry_run=False)
+    assert (index_dir / "clients" / "INDEX.md").exists()
+    assert not (corpus / "clients" / "INDEX.md").exists()
+
+
+def test_enrich_index_dir_patches_existing_stub(tmp_path):
+    corpus = tmp_path / "corpus"
+    index_dir = tmp_path / "indexes"
+    (corpus / "clients").mkdir(parents=True)
+    stub_dir = index_dir / "clients"
+    stub_dir.mkdir(parents=True)
+    (stub_dir / "INDEX.md").write_text(STUB)
+    graph_json = _make_graph_json_at(corpus, tmp_path)
+    enrich(corpus, graph_json_path=graph_json, index_dir=index_dir, watch=False, dry_run=False)
+    content = (stub_dir / "INDEX.md").read_text()
+    assert "#ballu" in content
+    assert "last_enriched" in content

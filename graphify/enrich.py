@@ -334,15 +334,22 @@ def _patch_index(
 def enrich(
     corpus_path: Path,
     graph_json_path: Path | None = None,
+    index_dir: Path | None = None,
     watch: bool = False,
     dry_run: bool = False,
     master_only: bool = False,
 ) -> None:
-    """Read graph.json and write enriched INDEX.md files into corpus subfolders."""
+    """Read graph.json and write enriched INDEX.md files.
+
+    If index_dir is provided, indexes are written there instead of into the corpus.
+    When index_dir contains an existing INDEX.md stub, it is patched rather than overwritten.
+    """
     import json
     from graphify.build import build_from_json
 
     corpus_path = Path(corpus_path)
+    index_root = Path(index_dir) if index_dir else corpus_path
+
     if graph_json_path is None:
         graph_json_path = corpus_path / "graphify-out" / "graph.json"
 
@@ -372,21 +379,28 @@ def enrich(
         folder_summaries[folder] = {"summary": summary, "entities": entities}
 
         if not master_only:
-            abs_folder = corpus_path / folder
+            abs_folder = index_root / folder
             if not dry_run:
                 abs_folder.mkdir(parents=True, exist_ok=True)
-            _write_subfolder_index(abs_folder, folder_data, dry_run=dry_run)
+            existing_index = abs_folder / "INDEX.md"
+            if existing_index.exists() and not dry_run:
+                existing = existing_index.read_text(encoding="utf-8")
+                content = _patch_index(existing, summary=summary, entities=entities, cross_refs=cross_edges)
+                existing_index.write_text(content, encoding="utf-8")
+            else:
+                _write_subfolder_index(abs_folder, folder_data, dry_run=dry_run)
 
-    _write_master_index(corpus_path, folder_summaries, dry_run=dry_run)
+    _write_master_index(index_root, folder_summaries, dry_run=dry_run)
 
     if watch:
-        _watch_and_enrich(corpus_path, Path(graph_json_path), master_only=master_only)
+        _watch_and_enrich(corpus_path, Path(graph_json_path), master_only=master_only, index_dir=index_root)
 
 
 def _watch_and_enrich(
     corpus_path: Path,
     graph_json_path: Path,
     master_only: bool = False,
+    index_dir: Path | None = None,
     _enrich_fn=None,
     _stop_event=None,
     _poll_interval: float = 5.0,
@@ -400,7 +414,7 @@ def _watch_and_enrich(
     import threading
 
     if _enrich_fn is None:
-        _enrich_fn = lambda cp, gp, mo: enrich(cp, gp, watch=False, master_only=mo)
+        _enrich_fn = lambda cp, gp, mo: enrich(cp, gp, index_dir=index_dir, watch=False, master_only=mo)
 
     last_mtime = Path(graph_json_path).stat().st_mtime
     print(f"[graphify enrich] watching {graph_json_path} (poll every {_poll_interval}s) ...")
