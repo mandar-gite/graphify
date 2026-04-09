@@ -106,6 +106,59 @@ def extract_pdf_text(path: Path) -> str:
         return ""
 
 
+def extract_office_text(path: Path) -> str:
+    """Extract plain text from .docx, .xlsx, or .pptx files.
+
+    .docx: via pandoc subprocess (system install required).
+    .pptx: via python-pptx, falls back to pandoc.
+    .xlsx: sheet names + column headers only via openpyxl.
+    Returns "" on any error — caller skips empty content gracefully.
+    """
+    import subprocess
+    import warnings
+    ext = path.suffix.lower()
+    try:
+        if ext == ".docx":
+            result = subprocess.run(
+                ["pandoc", str(path), "-t", "plain", "--wrap=none"],
+                capture_output=True, text=True, timeout=30,
+            )
+            return result.stdout if result.returncode == 0 else ""
+        elif ext == ".pptx":
+            try:
+                from pptx import Presentation
+                prs = Presentation(str(path))
+                parts = []
+                for slide in prs.slides:
+                    for shape in slide.shapes:
+                        if shape.has_text_frame:
+                            parts.append(shape.text_frame.text)
+                return "\n".join(parts)
+            except Exception:
+                result = subprocess.run(
+                    ["pandoc", str(path), "-t", "plain", "--wrap=none"],
+                    capture_output=True, text=True, timeout=30,
+                )
+                return result.stdout if result.returncode == 0 else ""
+        elif ext == ".xlsx":
+            import openpyxl
+            wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
+            parts = []
+            for name in wb.sheetnames:
+                ws = wb[name]
+                parts.append(f"Sheet: {name}")
+                first_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+                if first_row:
+                    headers = [str(c) for c in first_row if c is not None]
+                    if headers:
+                        parts.append("Columns: " + ", ".join(headers))
+            wb.close()
+            return "\n".join(parts)
+    except Exception as e:
+        warnings.warn(f"extract_office_text: failed to extract {path}: {e}")
+    return ""
+
+
 def count_words(path: Path) -> int:
     try:
         if path.suffix.lower() == ".pdf":

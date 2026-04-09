@@ -78,3 +78,53 @@ def test_classify_xlsx():
 
 def test_classify_pptx():
     assert classify_file(Path("slides.pptx")) == FileType.DOCUMENT
+
+import subprocess
+import pytest
+
+def test_extract_office_text_docx(tmp_path):
+    from graphify.detect import extract_office_text
+    result = subprocess.run(["pandoc", "--version"], capture_output=True)
+    if result.returncode != 0:
+        pytest.skip("pandoc not available")
+    src = tmp_path / "input.md"
+    src.write_text("# Title\n\nHello world content here.")
+    docx = tmp_path / "test.docx"
+    subprocess.run(["pandoc", str(src), "-o", str(docx)], check=True)
+    text = extract_office_text(docx)
+    assert "Hello" in text or "Title" in text
+
+def test_extract_office_text_xlsx(tmp_path):
+    pytest.importorskip("openpyxl")
+    import openpyxl
+    from graphify.detect import extract_office_text
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Revenue"
+    ws.append(["Month", "Amount", "Region"])
+    ws.append(["Jan", 1000, "North"])
+    path = tmp_path / "data.xlsx"
+    wb.save(path)
+    text = extract_office_text(path)
+    assert "Revenue" in text
+    assert "Month" in text
+    assert "Amount" in text
+
+def test_extract_office_text_pptx(tmp_path):
+    pytest.importorskip("pptx")
+    from pptx import Presentation
+    from graphify.detect import extract_office_text
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[0])
+    slide.shapes.title.text = "Q4 Strategy"
+    path = tmp_path / "deck.pptx"
+    prs.save(path)
+    text = extract_office_text(path)
+    assert "Q4 Strategy" in text
+
+def test_extract_office_text_returns_empty_on_error(tmp_path):
+    from graphify.detect import extract_office_text
+    fake = tmp_path / "corrupt.docx"
+    fake.write_bytes(b"not a real docx")
+    result = extract_office_text(fake)
+    assert isinstance(result, str)

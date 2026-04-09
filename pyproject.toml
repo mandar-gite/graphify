@@ -41,7 +41,8 @@ neo4j = ["neo4j"]
 pdf = ["pypdf", "html2text"]
 watch = ["watchdog"]
 leiden = ["graspologic"]
-all = ["mcp", "neo4j", "pypdf", "html2text", "watchdog", "graspologic"]
+office = ["openpyxl", "python-pptx"]
+all = ["mcp", "neo4j", "pypdf", "html2text", "watchdog", "graspologic", "openpyxl", "python-pptx"]
 
 [project.scripts]
 graphify = "graphify.__main__:main"
