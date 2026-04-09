@@ -2,6 +2,16 @@
 
 Full release notes with details on each version: [GitHub Releases](https://github.com/safishamsi/graphify/releases)
 
+## 0.4.2 (2026-04-09)
+
+- Add: `.docx`, `.xlsx`, `.pptx` classified as `DOCUMENT` in `detect.py`
+- Add: `extract_office_text()` — pandoc for .docx, python-pptx for .pptx, openpyxl for .xlsx; returns `""` on any error
+- Add: `count_words()` routes office files through `extract_office_text()`
+- Add: `office = ["openpyxl", "python-pptx"]` optional dependency group in `pyproject.toml`
+- Add: subagent prompt in `skill.md` instructs extraction agents to use `extract_office_text()` for binary office files
+- Fix: SSRF guard — `_run_pandoc()` validates `path.is_file()` before invoking pandoc
+- Test: 8 new tests in `tests/test_detect.py` (385 total)
+
 ## 0.4.1 (2026-04-09)
 
 - Add: `graphify enrich-skill install` — installs `/graphify-enrich` Claude Code skill
