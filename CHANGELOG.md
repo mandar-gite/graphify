@@ -2,6 +2,24 @@
 
 Full release notes with details on each version: [GitHub Releases](https://github.com/safishamsi/graphify/releases)
 
+## 0.4.0 (2026-04-09)
+
+- Add: `graphify enrich <path>` command — reads `graphify-out/graph.json` and writes semantic `INDEX.md` files into each corpus subfolder plus a master `INDEX.md` at the root
+- Add: `--index-dir <dir>` flag — write enriched indexes to a separate target directory (e.g. `staging/gdrive-index/`) instead of back into the corpus
+- Add: `--watch` flag — polls `graph.json` mtime and auto-re-enriches on change
+- Add: `--dry-run` flag — preview index content without writing files
+- Add: `--master-only` flag — write root `INDEX.md` only, skip subfolder indexes
+- Add: `_patch_index` — when an existing `INDEX.md` stub is found, patches only the semantic sections (Summary, Key Entities, Cross-References) while preserving manually maintained fields (Type, Owner, Status, Key Files, Subfolders)
+- Add: optional Claude-generated folder summaries via `anthropic` SDK with graceful fallback when no API key is present
+- Fix: gitignore consolidation — `.serena/`, `CLAUDE.md`, `AGENTS.md`, `docs/` now ignored; `docs/superpowers/` and `docs/plans/` collapsed into `docs/`
+- Test: 28 new tests in `tests/test_enrich.py` (374 total)
+
+## 0.3.1 (2026-04-08)
+
+- Fix: SSRF in tweet fetch URL validation
+- Fix: YAML injection in webpage title and query frontmatter
+- Docs: SECURITY.md updated with supported versions, SSRF and YAML injection mitigations
+
 ## 0.3.0 (2026-04-06)
 
 - Add: multi-platform support — Codex (`skill-codex.md`), OpenCode (`skill-opencode.md`), OpenClaw (`skill-claw.md`)
