@@ -18,4 +18,8 @@ graphify-out/
 .graphify_python
 .claude/
 skills/
-docs/superpowers/
+docs/
+.gitnexus
+.serena/
+CLAUDE.md
+AGENTS.md
