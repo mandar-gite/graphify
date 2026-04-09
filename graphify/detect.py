@@ -20,6 +20,7 @@ CODE_EXTENSIONS = {'.py', '.ts', '.js', '.tsx', '.go', '.rs', '.java', '.cpp', '
 DOC_EXTENSIONS = {'.md', '.txt', '.rst'}
 PAPER_EXTENSIONS = {'.pdf'}
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'}
+OFFICE_EXTENSIONS = {'.docx', '.xlsx', '.pptx'}
 
 CORPUS_WARN_THRESHOLD = 50_000    # words - below this, warn "you may not need a graph"
 CORPUS_UPPER_THRESHOLD = 500_000  # words - above this, warn about token cost
@@ -84,6 +85,8 @@ def classify_file(path: Path) -> FileType | None:
         # Check if it's a converted paper
         if _looks_like_paper(path):
             return FileType.PAPER
+        return FileType.DOCUMENT
+    if ext in OFFICE_EXTENSIONS:
         return FileType.DOCUMENT
     return None
 

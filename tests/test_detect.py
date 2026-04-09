@@ -69,3 +69,12 @@ def test_classify_attention_paper():
     if paper_path.exists():
         result = classify_file(paper_path)
         assert result == FileType.PAPER
+
+def test_classify_docx():
+    assert classify_file(Path("report.docx")) == FileType.DOCUMENT
+
+def test_classify_xlsx():
+    assert classify_file(Path("data.xlsx")) == FileType.DOCUMENT
+
+def test_classify_pptx():
+    assert classify_file(Path("slides.pptx")) == FileType.DOCUMENT
