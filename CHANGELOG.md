@@ -2,6 +2,12 @@
 
 Full release notes with details on each version: [GitHub Releases](https://github.com/safishamsi/graphify/releases)
 
+## 0.4.1 (2026-04-09)
+
+- Add: `graphify enrich-skill install` — installs `/graphify-enrich` Claude Code skill
+- Add: `graphify/skill-enrich.md` — skill instructs Claude Code to generate folder summaries using its own frontier model (no `ANTHROPIC_API_KEY` required)
+- Test: 3 new tests in `tests/test_enrich_skill_install.py` (377 total)
+
 ## 0.4.0 (2026-04-09)
 
 - Add: `graphify enrich <path>` command — reads `graphify-out/graph.json` and writes semantic `INDEX.md` files into each corpus subfolder plus a master `INDEX.md` at the root
