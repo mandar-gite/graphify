@@ -45,6 +45,7 @@ def _cross_folder_edges(
     Each unique (source, target) pair is emitted at most once.
     """
     node_set = set(node_ids)
+    # frozenset dedup is correct for nx.Graph (undirected); would need revision for DiGraph
     seen: set[frozenset] = set()
     results = []
     for nid in node_ids:
@@ -150,6 +151,7 @@ def _write_master_index(
     Returns the content string when dry_run=True (no file written).
     Returns None after writing the file when dry_run=False.
     """
+    corpus_path = Path(corpus_path)
     now = datetime.date.today().isoformat()
 
     lines = [
@@ -167,8 +169,8 @@ def _write_master_index(
     ]
 
     for folder, data in sorted(folder_summaries.items()):
-        summary = data.get("summary", "")
-        entities = ", ".join(data.get("entities", [])[:5])
+        summary = data.get("summary", "").replace("|", r"\|")
+        entities = ", ".join(e.replace("|", r"\|") for e in data.get("entities", [])[:5])
         lines.append(f"| {folder} | {summary} | {entities} |")
 
     lines += ["", "## Entity → Folder map", ""]
@@ -180,7 +182,8 @@ def _write_master_index(
 
     lines += ["| Entity | Folder(s) |", "| --- | --- |"]
     for entity, folders in sorted(entity_map.items()):
-        lines.append(f"| {entity} | {', '.join(folders)} |")
+        safe_entity = entity.replace("|", r"\|")
+        lines.append(f"| {safe_entity} | {', '.join(folders)} |")
 
     lines.append("")
     content = "\n".join(lines)
@@ -222,7 +225,7 @@ def enrich(
         nodes = [dict(id=nid, **G.nodes[nid]) for nid in node_ids]
         cross_edges = _cross_folder_edges(folder, node_ids, G)
         entities = [n.get("label", "") for n in nodes if n.get("label")]
-        summary = ""  # filled by _generate_summary in Task 8
+        summary = ""
 
         folder_data = {
             "folder": folder,

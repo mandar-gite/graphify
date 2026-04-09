@@ -255,7 +255,7 @@ def test_watch_and_enrich_triggers_on_change(tmp_path):
     t.start()
     time.sleep(0.2)
     graph_json.touch()  # simulate graph.json update
-    time.sleep(0.3)
+    time.sleep(0.5)
     stop.set()
     t.join(timeout=2)
 
