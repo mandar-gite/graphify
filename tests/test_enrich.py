@@ -111,3 +111,51 @@ def test_write_subfolder_index_lists_documents(tmp_path):
     content = (folder / "INDEX.md").read_text()
     assert "contract.md" in content
     assert "q2.md" in content
+
+
+# ---------------------------------------------------------------------------
+# Task 4: _write_master_index
+# ---------------------------------------------------------------------------
+from graphify.enrich import _write_master_index
+
+
+def test_write_master_index_creates_file(tmp_path):
+    folder_summaries = {
+        Path("clients/bridgestone"): {
+            "summary": "Bridgestone engagement.",
+            "entities": ["Contract Renewal", "Tanaka-san"],
+        },
+        Path("finance"): {
+            "summary": "Finance and invoices.",
+            "entities": ["payment terms", "Q2 budget"],
+        },
+    }
+    _write_master_index(tmp_path, folder_summaries, dry_run=False)
+    content = (tmp_path / "INDEX.md").read_text()
+    assert "clients/bridgestone" in content
+    assert "Contract Renewal" in content
+    assert "finance" in content
+    assert "last_enriched" in content
+
+
+def test_write_master_index_entity_folder_map(tmp_path):
+    folder_summaries = {
+        Path("clients/bridgestone"): {
+            "summary": "Bridgestone.",
+            "entities": ["contract renewal"],
+        },
+        Path("finance"): {
+            "summary": "Finance.",
+            "entities": ["contract renewal", "invoice"],
+        },
+    }
+    _write_master_index(tmp_path, folder_summaries, dry_run=False)
+    content = (tmp_path / "INDEX.md").read_text()
+    # contract renewal appears in two folders
+    assert content.count("contract renewal") >= 2
+
+
+def test_write_master_index_dry_run(tmp_path):
+    result = _write_master_index(tmp_path, {}, dry_run=True)
+    assert not (tmp_path / "INDEX.md").exists()
+    assert isinstance(result, str)

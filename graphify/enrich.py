@@ -138,3 +138,56 @@ def _write_subfolder_index(
     index_path = folder / "INDEX.md"
     index_path.write_text(content, encoding="utf-8")
     return None
+
+
+def _write_master_index(
+    corpus_path: Path,
+    folder_summaries: dict[Path, dict],
+    dry_run: bool = False,
+) -> str | None:
+    """Write master INDEX.md at corpus root.
+
+    Returns the content string when dry_run=True (no file written).
+    Returns None after writing the file when dry_run=False.
+    """
+    now = datetime.date.today().isoformat()
+
+    lines = [
+        "---",
+        f'last_enriched: "{now}"',
+        f"total_folders: {len(folder_summaries)}",
+        "---",
+        "",
+        "# Master Index",
+        "",
+        "## Folder map",
+        "",
+        "| Folder | What's there | Key entities |",
+        "| --- | --- | --- |",
+    ]
+
+    for folder, data in sorted(folder_summaries.items()):
+        summary = data.get("summary", "")
+        entities = ", ".join(data.get("entities", [])[:5])
+        lines.append(f"| {folder} | {summary} | {entities} |")
+
+    lines += ["", "## Entity → Folder map", ""]
+
+    entity_map: dict[str, list[str]] = {}
+    for folder, data in folder_summaries.items():
+        for entity in data.get("entities", []):
+            entity_map.setdefault(entity, []).append(str(folder))
+
+    lines += ["| Entity | Folder(s) |", "| --- | --- |"]
+    for entity, folders in sorted(entity_map.items()):
+        lines.append(f"| {entity} | {', '.join(folders)} |")
+
+    lines.append("")
+    content = "\n".join(lines)
+
+    if dry_run:
+        return content
+
+    index_path = Path(corpus_path) / "INDEX.md"
+    index_path.write_text(content, encoding="utf-8")
+    return None
