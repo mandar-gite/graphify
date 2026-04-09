@@ -207,6 +207,16 @@ Rules:
 Code files: focus on semantic edges AST cannot find (call relationships, shared data, arch patterns).
   Do not re-extract imports - AST already has those.
 Doc/paper files: extract named concepts, entities, citations. Also extract rationale — sections that explain WHY a decision was made, trade-offs chosen, or design intent. These become nodes with `rationale_for` edges pointing to the concept they explain.
+Office files (.docx, .pptx, .xlsx): these are binary — do NOT use the Read tool directly.
+  Instead, run this Python snippet to get the text content, then extract entities from the output:
+  ```python
+  from graphify.detect import extract_office_text
+  from pathlib import Path
+  text = extract_office_text(Path("REPLACE_WITH_FILE_PATH"))
+  print(text)
+  ```
+  For .xlsx: the output contains sheet names and column headers only — extract those as entities.
+  For .docx/.pptx: extract named concepts, people, decisions, and rationale from the full text.
 Image files: use vision to understand what the image IS - do not just OCR.
   UI screenshot: layout patterns, design decisions, key elements, purpose.
   Chart: metric, trend/insight, data source.
