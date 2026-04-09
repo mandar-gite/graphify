@@ -1,5 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
+import datetime
 import networkx as nx
 
 
@@ -49,3 +50,65 @@ def _cross_folder_edges(
                 "confidence": edata.get("confidence", "EXTRACTED"),
             })
     return results
+
+
+def _write_subfolder_index(
+    folder: Path,
+    data: dict,
+    dry_run: bool = False,
+) -> str | None:
+    """Write enriched INDEX.md for a subfolder. Returns content string (dry_run) or None."""
+    now = datetime.date.today().isoformat()
+    nodes = data["nodes"]
+    cross_edges = data.get("cross_edges", [])
+    summary = data.get("summary", "")
+
+    docs = sorted({Path(n["source_file"]).name for n in nodes if n.get("source_file")})
+    entities = [n["label"] for n in nodes if n.get("label")]
+    entity_list = ", ".join(entities[:10])
+
+    connected: dict[str, str] = {}
+    for e in cross_edges:
+        tf = str(e["target_folder"])
+        if tf not in connected:
+            connected[tf] = e["relation"]
+
+    lines = [
+        "---",
+        f'folder: "{data["folder"]}"',
+        f'entities: [{entity_list}]',
+        f'last_enriched: "{now}"',
+        "---",
+        "",
+        f"# {data['folder'].name.replace('-', ' ').replace('_', ' ').title()}",
+        "",
+    ]
+
+    if summary:
+        lines += ["## What's here", "", summary, ""]
+
+    lines += ["## Documents", ""]
+    for doc in docs:
+        lines.append(f"- {doc}")
+    lines.append("")
+
+    if entities:
+        lines += ["## Key entities", ""]
+        for entity in entities[:20]:
+            lines.append(f"- {entity}")
+        lines.append("")
+
+    if connected:
+        lines += ["## Connected folders", ""]
+        for tf, relation in connected.items():
+            lines.append(f"- [[{tf}]] — `{relation}`")
+        lines.append("")
+
+    content = "\n".join(lines)
+
+    if dry_run:
+        return None
+
+    index_path = folder / "INDEX.md"
+    index_path.write_text(content, encoding="utf-8")
+    return None

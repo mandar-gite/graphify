@@ -60,3 +60,53 @@ def test_cross_folder_edges_ignores_same_folder():
     G.add_edge("a", "b", relation="references", confidence="EXTRACTED", _src="a", _tgt="b")
     edges = _cross_folder_edges(Path("clients/bridgestone"), ["a", "b"], G)
     assert len(edges) == 0
+
+
+# ---------------------------------------------------------------------------
+# Task 3: _write_subfolder_index
+# ---------------------------------------------------------------------------
+from graphify.enrich import _write_subfolder_index
+
+
+def _make_folder_data():
+    return {
+        "folder": Path("clients/bridgestone"),
+        "node_ids": ["a", "b"],
+        "nodes": [
+            {"id": "a", "label": "Contract Renewal", "source_file": "clients/bridgestone/contract.md", "file_type": "document"},
+            {"id": "b", "label": "Q2 Review", "source_file": "clients/bridgestone/q2.md", "file_type": "document"},
+        ],
+        "cross_edges": [
+            {"target_folder": Path("finance"), "relation": "references", "confidence": "EXTRACTED"},
+        ],
+        "summary": "Bridgestone engagement covering contract renewal and Q2 review.",
+    }
+
+
+def test_write_subfolder_index_dry_run(tmp_path):
+    data = _make_folder_data()
+    written = _write_subfolder_index(tmp_path / "clients/bridgestone", data, dry_run=True)
+    assert written is None
+    assert not (tmp_path / "clients/bridgestone/INDEX.md").exists()
+
+
+def test_write_subfolder_index_creates_file(tmp_path):
+    folder = tmp_path / "clients/bridgestone"
+    folder.mkdir(parents=True)
+    data = _make_folder_data()
+    _write_subfolder_index(folder, data, dry_run=False)
+    content = (folder / "INDEX.md").read_text()
+    assert "Contract Renewal" in content
+    assert "Q2 Review" in content
+    assert "finance" in content
+    assert "last_enriched" in content
+
+
+def test_write_subfolder_index_lists_documents(tmp_path):
+    folder = tmp_path / "clients/bridgestone"
+    folder.mkdir(parents=True)
+    data = _make_folder_data()
+    _write_subfolder_index(folder, data, dry_run=False)
+    content = (folder / "INDEX.md").read_text()
+    assert "contract.md" in content
+    assert "q2.md" in content
