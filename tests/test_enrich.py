@@ -34,3 +34,29 @@ def test_group_nodes_excludes_nodes_without_source_file():
     G.add_node("y", label="Y", file_type="document")
     groups = _group_nodes_by_folder(G, Path("."))
     assert len(groups) == 0
+
+
+# ---------------------------------------------------------------------------
+# Task 2: _cross_folder_edges
+# ---------------------------------------------------------------------------
+from graphify.enrich import _cross_folder_edges
+
+
+def test_cross_folder_edges_finds_edges():
+    G = nx.Graph()
+    G.add_node("a", label="A", source_file="clients/bridgestone/brief.md", file_type="document")
+    G.add_node("b", label="B", source_file="finance/invoice.md", file_type="document")
+    G.add_edge("a", "b", relation="references", confidence="EXTRACTED", _src="a", _tgt="b")
+    edges = _cross_folder_edges(Path("clients/bridgestone"), ["a"], G)
+    assert len(edges) == 1
+    assert edges[0]["target_folder"] == Path("finance")
+    assert edges[0]["relation"] == "references"
+
+
+def test_cross_folder_edges_ignores_same_folder():
+    G = nx.Graph()
+    G.add_node("a", label="A", source_file="clients/bridgestone/brief.md", file_type="document")
+    G.add_node("b", label="B", source_file="clients/bridgestone/contract.md", file_type="document")
+    G.add_edge("a", "b", relation="references", confidence="EXTRACTED", _src="a", _tgt="b")
+    edges = _cross_folder_edges(Path("clients/bridgestone"), ["a", "b"], G)
+    assert len(edges) == 0
