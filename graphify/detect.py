@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 from enum import Enum
 from pathlib import Path
 
@@ -106,24 +107,34 @@ def extract_pdf_text(path: Path) -> str:
         return ""
 
 
+def _run_pandoc(path: Path) -> str:
+    """Run pandoc on a regular file and return plain text, or "" on any failure."""
+    if not path.is_file():
+        return ""
+    try:
+        result = subprocess.run(
+            ["pandoc", str(path), "-t", "plain", "--wrap=none"],
+            capture_output=True, text=True, timeout=30,
+        )
+        return result.stdout if result.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
 def extract_office_text(path: Path) -> str:
     """Extract plain text from .docx, .xlsx, or .pptx files.
 
-    .docx: via pandoc subprocess (system install required).
+    .docx: via pandoc (system install required).
     .pptx: via python-pptx, falls back to pandoc.
     .xlsx: sheet names + column headers only via openpyxl.
     Returns "" on any error — caller skips empty content gracefully.
     """
-    import subprocess
-    import warnings
+    if not path.is_file():
+        return ""
     ext = path.suffix.lower()
     try:
         if ext == ".docx":
-            result = subprocess.run(
-                ["pandoc", str(path), "-t", "plain", "--wrap=none"],
-                capture_output=True, text=True, timeout=30,
-            )
-            return result.stdout if result.returncode == 0 else ""
+            return _run_pandoc(path)
         elif ext == ".pptx":
             try:
                 from pptx import Presentation
@@ -135,11 +146,7 @@ def extract_office_text(path: Path) -> str:
                             parts.append(shape.text_frame.text)
                 return "\n".join(parts)
             except Exception:
-                result = subprocess.run(
-                    ["pandoc", str(path), "-t", "plain", "--wrap=none"],
-                    capture_output=True, text=True, timeout=30,
-                )
-                return result.stdout if result.returncode == 0 else ""
+                return _run_pandoc(path)
         elif ext == ".xlsx":
             import openpyxl
             wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
@@ -154,8 +161,8 @@ def extract_office_text(path: Path) -> str:
                         parts.append("Columns: " + ", ".join(headers))
             wb.close()
             return "\n".join(parts)
-    except Exception as e:
-        warnings.warn(f"extract_office_text: failed to extract {path}: {e}")
+    except Exception:
+        return ""
     return ""
 
 

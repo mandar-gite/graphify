@@ -127,7 +127,7 @@ def test_extract_office_text_returns_empty_on_error(tmp_path):
     fake = tmp_path / "corrupt.docx"
     fake.write_bytes(b"not a real docx")
     result = extract_office_text(fake)
-    assert isinstance(result, str)
+    assert result == ""
 
 def test_count_words_docx(tmp_path):
     result = subprocess.run(["pandoc", "--version"], capture_output=True)
