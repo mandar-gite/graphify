@@ -128,3 +128,14 @@ def test_extract_office_text_returns_empty_on_error(tmp_path):
     fake.write_bytes(b"not a real docx")
     result = extract_office_text(fake)
     assert isinstance(result, str)
+
+def test_count_words_docx(tmp_path):
+    result = subprocess.run(["pandoc", "--version"], capture_output=True)
+    if result.returncode != 0:
+        pytest.skip("pandoc not available")
+    src = tmp_path / "input.md"
+    src.write_text("# Title\n\nThis document has several words in it.")
+    docx = tmp_path / "test.docx"
+    subprocess.run(["pandoc", str(src), "-o", str(docx)], check=True)
+    from graphify.detect import count_words
+    assert count_words(docx) > 5

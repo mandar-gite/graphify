@@ -161,8 +161,11 @@ def extract_office_text(path: Path) -> str:
 
 def count_words(path: Path) -> int:
     try:
-        if path.suffix.lower() == ".pdf":
+        ext = path.suffix.lower()
+        if ext == ".pdf":
             return len(extract_pdf_text(path).split())
+        if ext in OFFICE_EXTENSIONS:
+            return len(extract_office_text(path).split())
         return len(path.read_text(errors="ignore").split())
     except Exception:
         return 0
