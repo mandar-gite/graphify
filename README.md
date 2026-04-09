@@ -179,6 +179,25 @@ graphify enrich-skill install
 
 If you manage existing `INDEX.md` stubs (e.g. from a Bootstrap process), `_patch_index` preserves manually maintained fields (Type, Owner, Status, Key Files) while updating only the semantic sections.
 
+### `graphify enrich` flags
+
+| Flag | What it does |
+|------|-------------|
+| `<path>` | Corpus root — must contain `graphify-out/graph.json` |
+| `--index-dir <dir>` | Write INDEX.md files to a separate directory instead of into the corpus (recommended when the corpus is a Drive mirror or shared folder you want to keep clean) |
+| `--watch` | Poll `graph.json` mtime every 5s and re-enrich automatically when the graph changes |
+| `--dry-run` | Preview generated INDEX.md content without writing any files |
+| `--master-only` | Write the root `INDEX.md` only — skip per-subfolder files |
+
+### `/graphify-enrich` flags (Claude Code skill)
+
+| Flag | What it does |
+|------|-------------|
+| `<corpus_path>` | Path to the corpus root |
+| `--index-dir <dir>` | Same as above — write enriched files here instead of into the corpus |
+| `--master-only` | Root `INDEX.md` only |
+| `--dry-run` | Preview without writing |
+
 ## What you get
 
 **God nodes** - highest-degree concepts (what everything connects through)
